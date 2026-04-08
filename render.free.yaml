@@ -24,6 +24,8 @@ services:
         generateValue: true
       - key: FRONTEND_ORIGIN
         value: https://faxxiner.vercel.app
+      - key: HEALTH_DEEP_SECRET
+        sync: false
       - key: LGPD_CONTROLLER_EMAIL
         sync: false
       - key: LGPD_DPO_EMAIL

@@ -1,9 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "./app.js";
 
 describe("createApp", () => {
   const app = createApp();
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
   it("GET /health returns ok", async () => {
     const res = await request(app).get("/health").expect(200);
@@ -16,6 +20,29 @@ describe("createApp", () => {
 
   it("GET /health?deep=1 checks database when reachable", async () => {
     const res = await request(app).get("/health?deep=1");
+    expect([200, 503, 500]).toContain(res.status);
+    if (res.status === 200) {
+      expect(res.body).toMatchObject({ ok: true, db: true });
+    }
+  });
+
+  it("GET /health?deep=1 is forbidden in production without secret", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FRONTEND_ORIGIN", "https://example.test");
+    vi.stubEnv("HEALTH_DEEP_SECRET", "");
+    const prodApp = createApp();
+    const res = await request(prodApp).get("/health?deep=1");
+    expect(res.status).toBe(403);
+  });
+
+  it("GET /health?deep=1 works in production with matching secret header", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FRONTEND_ORIGIN", "https://example.test");
+    vi.stubEnv("HEALTH_DEEP_SECRET", "test-health-deep-secret-key");
+    const prodApp = createApp();
+    const res = await request(prodApp)
+      .get("/health?deep=1")
+      .set("x-health-deep-key", "test-health-deep-secret-key");
     expect([200, 503, 500]).toContain(res.status);
     if (res.status === 200) {
       expect(res.body).toMatchObject({ ok: true, db: true });

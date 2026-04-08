@@ -114,6 +114,8 @@ meRouter.delete("/account", async (req, res) => {
     const randomHash = await bcrypt.hash(randomBytes(48).toString("hex"), getBcryptRounds());
 
     await prisma.$transaction(async (tx) => {
+      await tx.refreshSession.deleteMany({ where: { userId: uid } });
+
       await tx.user.update({
         where: { id: uid },
         data: {

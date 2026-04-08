@@ -88,7 +88,7 @@ export function Layout() {
                 <span className="nav-user" title={user.name}>
                   {user.name}
                 </span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => void logout()}>
                   Sair
                 </button>
               </>

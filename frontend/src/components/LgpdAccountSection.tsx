@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
  * Portabilidade e exclusão de conta (LGPD) — disponível para qualquer papel logado.
  */
 export function LgpdAccountSection() {
-  const { logout } = useAuth();
+  const { logout, accessToken } = useAuth();
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -16,9 +16,9 @@ export function LgpdAccountSection() {
     setMsg(null);
     setBusy(true);
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch(resolveApiPath("/api/me/data-export"), {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
+        credentials: "include",
+        headers: { Authorization: accessToken ? `Bearer ${accessToken}` : "" },
       });
       if (!res.ok) {
         const text = await res.text();
@@ -56,7 +56,7 @@ export function LgpdAccountSection() {
     setBusy(true);
     try {
       await api("/api/me/account", { method: "DELETE", json: { password: pwd } });
-      logout();
+      await logout();
       window.location.href = "/";
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "Erro ao encerrar conta");

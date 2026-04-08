@@ -13,15 +13,59 @@ export function resolveApiPath(path: string): string {
 
 export type ApiError = { error: string };
 
+type ApiAuthConfig = {
+  getAccessToken: () => string | null;
+  setAccessToken: (token: string | null) => void;
+};
+
+let apiAuth: ApiAuthConfig | null = null;
+
+export function configureApiAuth(config: ApiAuthConfig): void {
+  apiAuth = config;
+}
+
+const NO_REFRESH_PREFIXES = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+];
+
+function pathSkipsRefresh(p: string): boolean {
+  const pathOnly = p.split("?")[0] ?? p;
+  return NO_REFRESH_PREFIXES.some((prefix) => pathOnly === prefix);
+}
+
+async function trySessionRefresh(): Promise<boolean> {
+  const res = await fetch(url("/api/auth/refresh"), {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { accessToken?: string };
+  if (!data.accessToken || !apiAuth) return false;
+  apiAuth.setAccessToken(data.accessToken);
+  return true;
+}
+
 export async function api<T>(
   path: string,
   init?: RequestInit & { json?: unknown }
 ): Promise<T> {
+  return doRequest<T>(path, false, init);
+}
+
+async function doRequest<T>(
+  path: string,
+  afterRefresh: boolean,
+  init?: RequestInit & { json?: unknown }
+): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json",
-    ...(init?.headers as Record<string, string> | undefined),
+    ...((init?.headers as Record<string, string> | undefined) ?? {}),
   };
-  const token = localStorage.getItem("token");
+  const token = apiAuth?.getAccessToken() ?? null;
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let body: BodyInit | undefined = init?.body as BodyInit | undefined;
@@ -30,7 +74,13 @@ export async function api<T>(
     body = JSON.stringify(init.json);
   }
 
-  const res = await fetch(url(path), { ...init, headers, body });
+  const res = await fetch(url(path), {
+    ...init,
+    headers,
+    body,
+    credentials: "include",
+  });
+
   if (res.status === 204) {
     return undefined as T;
   }
@@ -45,6 +95,10 @@ export async function api<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401 && !afterRefresh && !pathSkipsRefresh(path)) {
+      const refreshed = await trySessionRefresh();
+      if (refreshed) return doRequest<T>(path, true, init);
+    }
     const msg =
       data && typeof data === "object" && "error" in data && typeof (data as ApiError).error === "string"
         ? (data as ApiError).error

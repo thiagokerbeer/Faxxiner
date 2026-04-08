@@ -39,6 +39,20 @@ model User {
   diaristProfile     DiaristProfile?
   bookingsAsClient   Booking[] @relation("ClientBookings")
   bookingsAsDiarist  Booking[] @relation("DiaristBookings")
+  refreshSessions    RefreshSession[]
+}
+
+/// Sessão de refresh (cookie httpOnly); token em claro só no cookie, hash no banco.
+model RefreshSession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model DiaristProfile {

@@ -26,3 +26,19 @@ export const authRegisterLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Limite de cadastros por hora atingido. Tente mais tarde." },
 });
+
+export const authRefreshLimiter = rateLimit({
+  windowMs: window15m,
+  max: Math.max(10, Number(process.env.RATE_LIMIT_REFRESH_MAX ?? "60")),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas renovações de sessão. Aguarde e tente de novo." },
+});
+
+export const authLogoutLimiter = rateLimit({
+  windowMs: window15m,
+  max: Math.max(10, Number(process.env.RATE_LIMIT_LOGOUT_MAX ?? "40")),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente em alguns minutos." },
+});

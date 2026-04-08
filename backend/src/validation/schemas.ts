@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BookingStatus, Role } from "@prisma/client";
+import { isProduction } from "../lib/env.js";
 
 export const registerBodySchema = z.object({
   email: z.string().email().max(254),
@@ -44,10 +45,28 @@ export const diaristaProfilePutSchema = z.object({
   servicesOffered: z.string().min(1).max(2000),
   hourlyRateCents: z.number().int().min(0).max(10_000_000),
   photoUrl: z
-    .union([z.string().url().max(2048), z.literal("")])
+    .union([z.string().max(2048), z.literal("")])
     .optional()
     .nullable()
-    .transform((v) => (v === "" ? null : v)),
+    .transform((v) => (v === "" ? null : v))
+    .superRefine((val, ctx) => {
+      if (val === null || val === undefined) return;
+      let u: URL;
+      try {
+        u = new URL(val);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "photoUrl deve ser uma URL válida" });
+        return;
+      }
+      if (u.protocol === "https:") return;
+      const localHttp =
+        u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1");
+      if (!isProduction() && localHttp) return;
+      ctx.addIssue({
+        code: "custom",
+        message: "photoUrl deve usar HTTPS (http permitido só em localhost fora de produção)",
+      });
+    }),
   isActive: z.boolean().optional(),
 });
 

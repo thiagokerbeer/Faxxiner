@@ -29,9 +29,36 @@ export function getBcryptRounds(): number {
   return Math.min(15, Math.max(10, n));
 }
 
-export function getJwtExpiresIn(): string {
-  const v = process.env.JWT_EXPIRES_IN?.trim();
-  return v && v.length > 0 ? v : "7d";
+/** Access JWT (Bearer). Curto por padrão; refresh fica no cookie httpOnly. */
+export function getJwtAccessExpiresIn(): string {
+  const a = process.env.JWT_ACCESS_EXPIRES_IN?.trim();
+  if (a && a.length > 0) return a;
+  const legacy = process.env.JWT_EXPIRES_IN?.trim();
+  if (legacy && legacy.length > 0) return legacy;
+  return "15m";
+}
+
+/**
+ * Duração do refresh cookie / sessão no banco.
+ * Formato: número (segundos) ou sufixo d|h|m|s (ex.: 30d, 12h, 15m).
+ */
+export function getRefreshTokenMaxAgeSeconds(): number {
+  const raw = (process.env.JWT_REFRESH_EXPIRES_IN ?? "30d").trim();
+  const parsed = parseDurationToSeconds(raw);
+  if (parsed !== null) return Math.min(365 * 24 * 60 * 60, Math.max(60, parsed));
+  return 30 * 24 * 60 * 60;
+}
+
+function parseDurationToSeconds(s: string): number | null {
+  const t = s.trim();
+  if (!t) return null;
+  if (/^\d+$/.test(t)) return Number.parseInt(t, 10);
+  const m = /^(\d+)\s*([dhms])$/i.exec(t);
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 10);
+  const u = m[2].toLowerCase();
+  const mult = u === "d" ? 86400 : u === "h" ? 3600 : u === "m" ? 60 : 1;
+  return n * mult;
 }
 
 export function isProduction(): boolean {

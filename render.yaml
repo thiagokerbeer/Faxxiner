@@ -28,6 +28,10 @@ services:
         generateValue: true
       - key: FRONTEND_ORIGIN
         value: https://faxxiner.vercel.app
+      # Opcional: GET /health?deep=1 em produção (monitor com DB). Mín. 16 caracteres. Cabeçalho x-health-deep-key ou ?key=
+      - key: HEALTH_DEEP_SECRET
+        sync: false
+      # Opcional: JWT_ACCESS_EXPIRES_IN (ex. 15m), JWT_REFRESH_EXPIRES_IN (ex. 30d)
       - key: LGPD_CONTROLLER_EMAIL
         sync: false
       - key: LGPD_DPO_EMAIL

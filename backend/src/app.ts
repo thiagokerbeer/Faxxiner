@@ -10,7 +10,7 @@ import { meRouter } from "./routes/me.js";
 import { globalApiLimiter } from "./middleware/rateLimits.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requestContextMiddleware } from "./middleware/requestContext.js";
-import { getFrontendCorsOrigins } from "./lib/env.js";
+import { getFrontendCorsOrigins, isProduction } from "./lib/env.js";
 import { prisma } from "./lib/prisma.js";
 import { asyncHandler } from "./lib/asyncHandler.js";
 
@@ -41,6 +41,21 @@ export function createApp() {
     "/health",
     asyncHandler(async (req, res) => {
       if (req.query.deep === "1") {
+        if (isProduction()) {
+          const secret = process.env.HEALTH_DEEP_SECRET?.trim();
+          if (!secret || secret.length < 16) {
+            res.status(403).json({ error: "Indisponível" });
+            return;
+          }
+          const hdr = req.headers["x-health-deep-key"];
+          const keyFromHeader = typeof hdr === "string" ? hdr : Array.isArray(hdr) ? hdr[0] : "";
+          const qk = req.query.key;
+          const keyFromQuery = typeof qk === "string" ? qk : "";
+          if (keyFromHeader !== secret && keyFromQuery !== secret) {
+            res.status(403).json({ error: "Indisponível" });
+            return;
+          }
+        }
         await prisma.$queryRaw`SELECT 1`;
         res.json({ ok: true, db: true });
         return;

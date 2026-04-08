@@ -4,14 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { api } from "@/api";
+import { api, configureApiAuth, resolveApiPath } from "@/api";
 import type { MeUser, Role, UserPublic } from "@/types";
 
 type AuthState = {
-  token: string | null;
+  accessToken: string | null;
   user: UserPublic | null;
   me: MeUser | null;
   loading: boolean;
@@ -26,20 +27,31 @@ type AuthState = {
     role: Role;
     acceptLgpdTerms: boolean;
   }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const TOKEN_KEY = "token";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const accessTokenRef = useRef<string | null>(null);
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [user, setUser] = useState<UserPublic | null>(null);
   const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  const setAccessToken = useCallback((t: string | null) => {
+    accessTokenRef.current = t;
+    setAccessTokenState(t);
+  }, []);
+
+  useEffect(() => {
+    configureApiAuth({
+      getAccessToken: () => accessTokenRef.current,
+      setAccessToken,
+    });
+  }, [setAccessToken]);
 
   useEffect(() => {
     if (!authNotice) return;
@@ -50,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAuthNotice = useCallback(() => setAuthNotice(null), []);
 
   const refreshMe = useCallback(async () => {
-    const t = localStorage.getItem(TOKEN_KEY);
+    const t = accessTokenRef.current;
     if (!t) {
       setUser(null);
       setMe(null);
@@ -68,30 +80,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: m.role,
       });
     } catch {
-      localStorage.removeItem(TOKEN_KEY);
-      setToken(null);
+      setAccessToken(null);
       setUser(null);
       setMe(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setAccessToken]);
+
+  const bootstrap = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(resolveApiPath("/api/auth/refresh"), {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { accessToken?: string };
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+          await refreshMe();
+          return;
+        }
+      }
+      setAccessToken(null);
+      setUser(null);
+      setMe(null);
+    } catch {
+      setAccessToken(null);
+      setUser(null);
+      setMe(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshMe, setAccessToken]);
 
   useEffect(() => {
-    void refreshMe();
-  }, [refreshMe]);
+    void bootstrap();
+  }, [bootstrap]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const r = await api<{ token: string; user: UserPublic }>("/api/auth/login", {
-      method: "POST",
-      json: { email, password },
-    });
-    localStorage.setItem(TOKEN_KEY, r.token);
-    setToken(r.token);
-    setUser(r.user);
-    await refreshMe();
-    setAuthNotice("Você logou na sua conta");
-  }, [refreshMe]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const r = await api<{ accessToken: string; user: UserPublic }>("/api/auth/login", {
+        method: "POST",
+        json: { email, password },
+      });
+      setAccessToken(r.accessToken);
+      setUser(r.user);
+      await refreshMe();
+      setAuthNotice("Você logou na sua conta");
+    },
+    [refreshMe, setAccessToken]
+  );
 
   const register = useCallback(
     async (p: {
@@ -102,29 +143,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: Role;
       acceptLgpdTerms: boolean;
     }) => {
-      const r = await api<{ token: string; user: UserPublic }>("/api/auth/register", {
+      const r = await api<{ accessToken: string; user: UserPublic }>("/api/auth/register", {
         method: "POST",
         json: p,
       });
-      localStorage.setItem(TOKEN_KEY, r.token);
-      setToken(r.token);
+      setAccessToken(r.accessToken);
       setUser(r.user);
       await refreshMe();
     },
-    [refreshMe]
+    [refreshMe, setAccessToken]
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setAuthNotice("Você saiu da sua conta");
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
+    try {
+      await fetch(resolveApiPath("/api/auth/logout"), {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      /* rede: ainda limpamos o estado local */
+    }
+    setAccessToken(null);
     setUser(null);
     setMe(null);
-  }, []);
+  }, [setAccessToken]);
 
   const value = useMemo(
     () => ({
-      token,
+      accessToken,
       user,
       me,
       loading,
@@ -135,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshMe,
     }),
-    [token, user, me, loading, authNotice, clearAuthNotice, login, register, logout, refreshMe]
+    [accessToken, user, me, loading, authNotice, clearAuthNotice, login, register, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
