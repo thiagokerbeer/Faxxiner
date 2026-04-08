@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: faxxiner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: faxxiner
+      POSTGRES_PASSWORD: faxxiner_local
+      POSTGRES_DB: faxxiner
+    ports:
+      - "5433:5432"
+    volumes:
+      - faxxiner_pgdata:/var/lib/postgresql/data
+
+volumes:
+  faxxiner_pgdata:

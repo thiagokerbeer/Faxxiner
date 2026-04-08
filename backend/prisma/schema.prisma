@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  DIARISTA
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role
+  /// Conta encerrada / titular exercitou direito de eliminação (LGPD) — dados anonimizados, login bloqueado
+  deletedAt    DateTime?
+  /// Registro de consentimento / base legal para cadastro (prestação do serviço)
+  privacyConsentAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  diaristProfile     DiaristProfile?
+  bookingsAsClient   Booking[] @relation("ClientBookings")
+  bookingsAsDiarist  Booking[] @relation("DiaristBookings")
+}
+
+model DiaristProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String
+  city            String
+  neighborhoods   String
+  hourlyRateCents Int
+  servicesOffered String
+  photoUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  clientId    String
+  client      User          @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  diaristId   String
+  diarist     User          @relation("DiaristBookings", fields: [diaristId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  address     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}

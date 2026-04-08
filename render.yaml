@@ -1,0 +1,34 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+# Conecte o repositório Git e use "Apply Blueprint" ou crie os recursos manualmente com os mesmos valores.
+
+databases:
+  - name: faxxiner-db
+    databaseName: faxxiner
+    user: faxxiner
+
+services:
+  - type: web
+    name: faxxiner-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npm run build && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: faxxiner-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: LGPD_CONTROLLER_EMAIL
+        sync: false
+      - key: LGPD_DPO_EMAIL
+        sync: false
