@@ -106,8 +106,8 @@ npx prisma db seed
 
 #### Render: erros comuns no deploy
 
-- **`prisma migrate deploy` no build** — o Blueprint usa **build** só para compilar (`npm run build`) e **`preDeployCommand`** para `npx prisma migrate deploy`, com `DATABASE_URL` já definido. Faça **commit/push** dessa config e **Manual Deploy → Clear build cache & deploy** se um deploy antigo ainda falhar.
-- **`DATABASE_URL` vazio** — preencha no painel do serviço **antes** de confiar no pre-deploy. No Neon, prefira a URL **direct** (sem `-pooler`) para migrações; se der erro de conexão, tente remover `&channel_binding=require` da string.
+- **`preDeployCommand`** — no plano **Free** do Render isso **não existe**; o `render.free.yaml` roda `npx prisma migrate deploy` **no `buildCommand`**, depois do `npm run build`.
+- **`DATABASE_URL` vazio no build** — defina **`DATABASE_URL`** (Neon) no painel **antes** do primeiro deploy bem-sucedido, senão o build falha na etapa de migrate. Prefira URL **direct** (sem `-pooler`); se der erro, tente remover `&channel_binding=require` da string.
 - **`tsc: not found` / TypeScript** — `typescript` está em `dependencies` e o build usa `npm install --production=false` para garantir devDeps (`@types/*`) no Render.
 - **`JWT_SECRET` / API não sobe** — em produção o código exige **≥ 32 caracteres**. Se o valor gerado pelo Blueprint for rejeitado, defina manualmente um segredo longo em **Environment**.
 
