@@ -4,6 +4,7 @@ import { authMiddleware, requireRole } from "../middleware/auth.js";
 import { Role } from "@prisma/client";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { AppError } from "../lib/AppError.js";
+import { routeParamAsString } from "../lib/routeParam.js";
 import { isUuid } from "../lib/uuid.js";
 import { parseBody } from "../lib/zodUtil.js";
 import { diaristaProfilePutSchema, diaristasListQuerySchema } from "../validation/schemas.js";
@@ -134,13 +135,14 @@ diaristasRouter.put(
 diaristasRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    if (!isUuid(req.params.id)) {
+    const profileId = routeParamAsString(req.params.id);
+    if (!isUuid(profileId)) {
       res.status(400).json({ error: "ID inválido" });
       return;
     }
     try {
       const row = await prisma.diaristProfile.findFirst({
-        where: { id: req.params.id, isActive: true, user: { deletedAt: null } },
+        where: { id: profileId, isActive: true, user: { deletedAt: null } },
         select: publicSelect,
       });
       if (!row) {

@@ -5,6 +5,7 @@ import { authMiddleware, requireRole } from "../middleware/auth.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { AppError } from "../lib/AppError.js";
 import { canTransitionBookingStatus } from "../lib/bookingStateMachine.js";
+import { routeParamAsString } from "../lib/routeParam.js";
 import { isUuid } from "../lib/uuid.js";
 import { parseBody } from "../lib/zodUtil.js";
 import { bookingCreateSchema, bookingStatusPatchSchema } from "../validation/schemas.js";
@@ -127,7 +128,8 @@ bookingsRouter.post(
 bookingsRouter.patch(
   "/:id/status",
   asyncHandler(async (req, res) => {
-    if (!isUuid(req.params.id)) {
+    const bookingId = routeParamAsString(req.params.id);
+    if (!isUuid(bookingId)) {
       res.status(400).json({ error: "ID de agendamento inválido" });
       return;
     }
@@ -140,7 +142,7 @@ bookingsRouter.patch(
     const { status } = parsed.data;
 
     try {
-      const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
+      const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
       if (!booking) {
         res.status(404).json({ error: "Agendamento não encontrado" });
         return;
