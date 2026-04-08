@@ -6,7 +6,7 @@
   "scripts": {
     "free-port": "node scripts/free-port.mjs",
     "dev": "node scripts/free-port.mjs && node --watch-path=./src --import tsx src/index.ts",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "prisma generate && node scripts/run-tsc.mjs",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:generate:fresh": "node scripts/prisma-fresh.mjs",
