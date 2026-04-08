@@ -97,10 +97,13 @@ Tudo com camadas **hobby / free** típicas (sujeitas a mudança pelos provedores
 4. **Vercel** → novo projeto → **Root Directory:** `frontend` → variável **`VITE_API_URL`** = URL da API Render (ex.: `https://faxxiner-api.onrender.com`, **sem** `/api` no final).
 5. Volte ao Render e confirme **`FRONTEND_ORIGIN`** = URL exata do site na Vercel (com `https://`), senão o navegador bloqueia por CORS.
 
-**Seed (contas demo) em produção**, opcional — local com a URL do Neon no `DATABASE_URL`:
+**Contas demo em produção** — e-mail `cliente@demo.com` ou `admin@demo.com`, senha **`demo123456`**. O Blueprint (`render.free.yaml` / `render.yaml`) roda **`npm run db:seed` no final do build**, para criar/atualizar esses usuários no Neon.
+
+Se ainda não passou no login: faça um **novo deploy** no Render (push + deploy) ou rode o seed uma vez no seu PC com o Neon:
 
 ```bash
 cd backend
+# PowerShell: $env:DATABASE_URL="postgresql://..."
 npx prisma db seed
 ```
 

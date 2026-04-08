@@ -9,8 +9,8 @@ services:
     runtime: node
     rootDir: backend
     plan: free
-    # Plano Free não suporta preDeployCommand no Render — migrações rodam no build (DATABASE_URL obrigatório).
-    buildCommand: npm install --production=false && npm run build && npx prisma migrate deploy
+    # Plano Free: sem pre-deploy. Migrate + seed no build (cria cliente@demo.com, admin@demo.com, etc.).
+    buildCommand: npm install --production=false && npm run build && npx prisma migrate deploy && npm run db:seed
     startCommand: npm start
     healthCheckPath: /health
     envVars:
