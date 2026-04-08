@@ -28,10 +28,15 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      # Prisma resolve env("DATABASE_URL") no validate mesmo sem DB real — URL fictícia basta.
       - name: Prisma validate
-        run: npx prisma validate
+        working-directory: backend
+        shell: bash
         env:
           DATABASE_URL: "postgresql://ci:ci@127.0.0.1:5432/ci?schema=public"
+        run: |
+          export DATABASE_URL="${DATABASE_URL:-postgresql://ci:ci@127.0.0.1:5432/ci?schema=public}"
+          npx prisma validate
       - name: Build
         run: npm run build
         env:
