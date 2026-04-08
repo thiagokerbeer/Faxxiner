@@ -9,6 +9,9 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      # Só para validate/generate no CI — não precisa de Postgres de verdade rodando
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
     defaults:
       run:
         working-directory: backend
