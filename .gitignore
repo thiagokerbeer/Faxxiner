@@ -25,5 +25,6 @@ Thumbs.db
 !.vscode/extensions.json
 
 # Prisma
+backend/prisma/.env
 backend/prisma/*.db
 backend/prisma/*.db-journal
