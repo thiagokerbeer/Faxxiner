@@ -1,0 +1,29 @@
+# Blueprint só com API (plano free) — banco em serviço gratuito externo (ex.: Neon).
+# 1) Crie um projeto em https://neon.tech e copie a connection string (PostgreSQL).
+# 2) No Render: New → Blueprint → este arquivo. Quando pedir DATABASE_URL, cole a URL do Neon.
+# 3) Depois suba o frontend na Vercel com VITE_API_URL apontando para a URL do Render.
+
+services:
+  - type: web
+    name: faxxiner-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npm run build && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: LGPD_CONTROLLER_EMAIL
+        sync: false
+      - key: LGPD_DPO_EMAIL
+        sync: false
