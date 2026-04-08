@@ -37,3 +37,26 @@ export function getJwtExpiresIn(): string {
 export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
+
+/**
+ * Em produção, FRONTEND_ORIGIN é obrigatório (evita CORS aberto por engano).
+ * Fora de produção, se vazio, usa localhost do Vite.
+ */
+function normalizeCorsOrigin(s: string): string {
+  return s.replace(/\/+$/, "");
+}
+
+export function getFrontendCorsOrigins(): string[] {
+  const raw = (process.env.FRONTEND_ORIGIN?.split(",") ?? [])
+    .map((s) => normalizeCorsOrigin(s.trim()))
+    .filter((s) => s.length > 0);
+  if (isProduction()) {
+    if (raw.length === 0) {
+      throw new Error(
+        "FRONTEND_ORIGIN é obrigatório em produção: defina uma ou mais URLs do frontend (ex.: https://app.vercel.app), separadas por vírgula."
+      );
+    }
+    return raw;
+  }
+  return raw.length > 0 ? raw : ["http://localhost:5173"];
+}

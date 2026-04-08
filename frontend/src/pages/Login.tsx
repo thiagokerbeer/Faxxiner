@@ -79,14 +79,17 @@ export function Login() {
               placeholder="nome@email.com"
             />
           </FormField>
-          <FormField id="login-password" label="Senha">
+          <FormField
+            id="login-password"
+            label="Senha"
+            hint="Use a mesma senha do cadastro (mínimo 8 caracteres para contas criadas aqui)."
+          >
             <input
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
               placeholder="••••••••"
             />
           </FormField>

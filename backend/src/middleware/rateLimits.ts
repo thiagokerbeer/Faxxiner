@@ -2,9 +2,10 @@ import rateLimit from "express-rate-limit";
 
 const window15m = 15 * 60 * 1000;
 
+/** Limite global (janela 15 min). Ajuste com RATE_LIMIT_GLOBAL_MAX no ambiente. */
 export const globalApiLimiter = rateLimit({
   windowMs: window15m,
-  max: Math.max(30, Number(process.env.RATE_LIMIT_GLOBAL_MAX ?? "300")),
+  max: Math.max(60, Number(process.env.RATE_LIMIT_GLOBAL_MAX ?? "600")),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Muitas requisições. Tente novamente em alguns minutos." },

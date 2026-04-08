@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/api";
 import { FormField } from "@/components/FormField";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { DiaristProfilePublic } from "@/types";
+
+const FILTER_DEBOUNCE_MS = 320;
 
 function formatHourly(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -11,15 +14,17 @@ function formatHourly(cents: number): string {
 export function Profissionais() {
   const [city, setCity] = useState("");
   const [maxHourly, setMaxHourly] = useState("");
+  const debouncedCity = useDebouncedValue(city, FILTER_DEBOUNCE_MS);
+  const debouncedMaxHourly = useDebouncedValue(maxHourly, FILTER_DEBOUNCE_MS);
   const [list, setList] = useState<DiaristProfilePublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = new URLSearchParams();
-    if (city.trim()) q.set("city", city.trim());
-    if (maxHourly.trim()) {
-      const n = parseInt(maxHourly, 10);
+    if (debouncedCity.trim()) q.set("city", debouncedCity.trim());
+    if (debouncedMaxHourly.trim()) {
+      const n = parseInt(debouncedMaxHourly, 10);
       if (Number.isFinite(n) && n > 0) q.set("maxHourly", String(n));
     }
     const path = `/api/diaristas${q.toString() ? `?${q}` : ""}`;
@@ -29,7 +34,15 @@ export function Profissionais() {
       .then(setList)
       .catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar"))
       .finally(() => setLoading(false));
-  }, [city, maxHourly]);
+  }, [debouncedCity, debouncedMaxHourly]);
+
+  const liveMessage = useMemo(() => {
+    if (loading) return "Carregando lista de profissionais.";
+    if (error) return `Erro ao carregar: ${error}`;
+    const n = list.length;
+    if (n === 0) return "Nenhum profissional encontrado com os filtros atuais.";
+    return `${n} profissional${n === 1 ? "" : "is"} encontrado${n === 1 ? "" : "s"}.`;
+  }, [loading, error, list.length]);
 
   return (
     <div className="container section">
@@ -39,6 +52,10 @@ export function Profissionais() {
           Diaristas e profissionais de trabalho doméstico com perfil ativo. Ajuste cidade e teto de valor por hora.
         </p>
       </header>
+
+      <p className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {liveMessage}
+      </p>
 
       <div className="filters card">
         <h2 className="filters-heading">Filtrar resultados</h2>

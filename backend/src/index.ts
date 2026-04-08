@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { assertEnvAtStartup } from "./lib/env.js";
 import { createApp } from "./app.js";
+import { disconnectPrisma } from "./lib/prisma.js";
 
 assertEnvAtStartup();
 
@@ -12,6 +13,22 @@ const server = app.listen(port);
 server.once("listening", () => {
   console.log(`Faxxiner API http://localhost:${port}`);
 });
+
+function shutdown(signal: string): void {
+  console.log(`[faxxiner] ${signal}, encerrando…`);
+  server.close((closeErr) => {
+    if (closeErr) {
+      console.error(closeErr);
+    }
+    void disconnectPrisma().finally(() => process.exit(closeErr ? 1 : 0));
+  });
+  setTimeout(() => {
+    void disconnectPrisma().finally(() => process.exit(1));
+  }, 10_000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {

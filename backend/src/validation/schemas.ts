@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { BookingStatus, Role } from "@prisma/client";
 
 export const registerBodySchema = z.object({
   email: z.string().email().max(254),
@@ -24,4 +24,34 @@ export const loginBodySchema = z.object({
 
 export const deleteAccountBodySchema = z.object({
   password: z.string().min(1).max(128),
+});
+
+export const bookingCreateSchema = z.object({
+  diaristUserId: z.string().uuid(),
+  scheduledAt: z.string().min(1).max(64),
+  notes: z.string().max(2000).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+});
+
+export const bookingStatusPatchSchema = z.object({
+  status: z.nativeEnum(BookingStatus),
+});
+
+export const diaristaProfilePutSchema = z.object({
+  bio: z.string().min(1).max(2000),
+  city: z.string().min(1).max(120),
+  neighborhoods: z.string().min(1).max(500),
+  servicesOffered: z.string().min(1).max(2000),
+  hourlyRateCents: z.number().int().min(0).max(10_000_000),
+  photoUrl: z
+    .union([z.string().url().max(2048), z.literal("")])
+    .optional()
+    .nullable()
+    .transform((v) => (v === "" ? null : v)),
+  isActive: z.boolean().optional(),
+});
+
+export const diaristasListQuerySchema = z.object({
+  city: z.string().max(120).optional(),
+  maxHourly: z.coerce.number().int().min(0).max(500000).optional(),
 });

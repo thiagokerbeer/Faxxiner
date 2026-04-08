@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import {
   DB_AUTH_FAILED_MESSAGE,
@@ -49,7 +49,11 @@ authRouter.post("/register", authRegisterLimiter, async (req, res) => {
     const token = signToken({ userId: user.id, role: user.role });
     res.status(201).json({ user, token });
   } catch (e) {
-    logError("POST /auth/register", e);
+    logError("POST /auth/register", e, req.requestId);
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      res.status(409).json({ error: "E-mail já cadastrado" });
+      return;
+    }
     if (isDatabaseUnreachable(e)) {
       res.status(503).json({ error: DB_UNAVAILABLE_MESSAGE });
       return;
@@ -95,7 +99,7 @@ authRouter.post("/login", authLoginLimiter, async (req, res) => {
       },
     });
   } catch (e) {
-    logError("POST /auth/login", e);
+    logError("POST /auth/login", e, req.requestId);
     if (isDatabaseUnreachable(e)) {
       res.status(503).json({ error: DB_UNAVAILABLE_MESSAGE });
       return;
@@ -127,7 +131,7 @@ authRouter.get("/me", authMiddleware, async (req, res) => {
     }
     res.json(user);
   } catch (e) {
-    logError("GET /auth/me", e);
+    logError("GET /auth/me", e, req.requestId);
     if (isDatabaseUnreachable(e)) {
       res.status(503).json({ error: DB_UNAVAILABLE_MESSAGE });
       return;

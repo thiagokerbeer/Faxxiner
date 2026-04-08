@@ -9,6 +9,10 @@ import { legalRouter } from "./routes/legal.js";
 import { meRouter } from "./routes/me.js";
 import { globalApiLimiter } from "./middleware/rateLimits.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { requestContextMiddleware } from "./middleware/requestContext.js";
+import { getFrontendCorsOrigins } from "./lib/env.js";
+import { prisma } from "./lib/prisma.js";
+import { asyncHandler } from "./lib/asyncHandler.js";
 
 export function createApp() {
   const app = express();
@@ -26,14 +30,38 @@ export function createApp() {
     })
   );
 
-  app.get("/health", (_req, res) => {
-    res.json({ ok: true });
+  app.use(requestContextMiddleware);
+
+  /** Só status (sem corpo) — útil para alguns monitores de uptime. */
+  app.head("/health", (_req, res) => {
+    res.status(200).end();
+  });
+
+  app.get(
+    "/health",
+    asyncHandler(async (req, res) => {
+      if (req.query.deep === "1") {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ ok: true, db: true });
+        return;
+      }
+      res.json({ ok: true });
+    })
+  );
+
+  /** Raiz — só para quem abre a URL da API no navegador (não é o site; o front fica na Vercel). */
+  app.get("/", (_req, res) => {
+    res.json({
+      service: "Faxxiner API",
+      ok: true,
+      health: "/health",
+      hint: "O app web usa rotas em /api/*; a interface fica no domínio do frontend (ex. Vercel).",
+    });
   });
 
   app.use(globalApiLimiter);
 
-  const origins =
-    process.env.FRONTEND_ORIGIN?.split(",").map((s) => s.trim()).filter(Boolean) ?? ["http://localhost:5173"];
+  const origins = getFrontendCorsOrigins();
 
   app.use(
     cors({

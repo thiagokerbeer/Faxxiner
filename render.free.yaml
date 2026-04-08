@@ -10,7 +10,7 @@ services:
     rootDir: backend
     plan: free
     # Plano Free: sem pre-deploy. Migrate + seed no build (cria cliente@demo.com, admin@demo.com, etc.).
-    buildCommand: npm install --production=false && npm run build && npx prisma migrate deploy && npm run db:seed
+    buildCommand: npm install --production=false && npm run build && npx prisma migrate deploy && ( [ "$SKIP_DB_SEED" = "true" ] || npm run db:seed )
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -23,7 +23,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: https://faxxiner.vercel.app
       - key: LGPD_CONTROLLER_EMAIL
         sync: false
       - key: LGPD_DPO_EMAIL

@@ -24,6 +24,7 @@ export function Agendamentos() {
   const [rows, setRows] = useState<BookingRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!user) {
@@ -44,6 +45,8 @@ export function Agendamentos() {
   }, [load]);
 
   async function setStatus(id: string, status: BookingStatus) {
+    setStatusUpdatingId(id);
+    setError(null);
     try {
       const updated = await api<BookingRow>(`/api/bookings/${id}/status`, {
         method: "PATCH",
@@ -52,6 +55,8 @@ export function Agendamentos() {
       setRows((prev) => prev.map((b) => (b.id === id ? updated : b)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao atualizar");
+    } finally {
+      setStatusUpdatingId(null);
     }
   }
 
@@ -104,6 +109,7 @@ export function Agendamentos() {
       <ul className="booking-list">
         {rows.map((b) => {
           const other = user.role === "CLIENT" ? b.diarist : b.client;
+          const rowBusy = statusUpdatingId === b.id;
           return (
             <li key={b.id} className="card booking-card">
               <div className="booking-top">
@@ -143,14 +149,15 @@ export function Agendamentos() {
                 </p>
               )}
               {!isAdmin && (
-                <div className="booking-actions">
+                <div className="booking-actions" aria-busy={rowBusy}>
                   {user.role === "CLIENT" && b.status === "PENDING" && (
                     <button
                       type="button"
                       className="btn btn-ghost"
+                      disabled={rowBusy}
                       onClick={() => void setStatus(b.id, "CANCELLED")}
                     >
-                      Cancelar
+                      {rowBusy ? "Atualizando…" : "Cancelar"}
                     </button>
                   )}
                   {user.role === "CLIENT" && b.status === "ACCEPTED" && (
@@ -158,16 +165,18 @@ export function Agendamentos() {
                       <button
                         type="button"
                         className="btn btn-ghost"
+                        disabled={rowBusy}
                         onClick={() => void setStatus(b.id, "CANCELLED")}
                       >
-                        Cancelar
+                        {rowBusy ? "Atualizando…" : "Cancelar"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary"
+                        disabled={rowBusy}
                         onClick={() => void setStatus(b.id, "COMPLETED")}
                       >
-                        Marcar concluído
+                        {rowBusy ? "Atualizando…" : "Marcar concluído"}
                       </button>
                     </>
                   )}
@@ -176,16 +185,18 @@ export function Agendamentos() {
                       <button
                         type="button"
                         className="btn btn-primary"
+                        disabled={rowBusy}
                         onClick={() => void setStatus(b.id, "ACCEPTED")}
                       >
-                        Aceitar
+                        {rowBusy ? "Atualizando…" : "Aceitar"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-ghost"
+                        disabled={rowBusy}
                         onClick={() => void setStatus(b.id, "REJECTED")}
                       >
-                        Recusar
+                        {rowBusy ? "Atualizando…" : "Recusar"}
                       </button>
                     </>
                   )}
@@ -193,9 +204,10 @@ export function Agendamentos() {
                     <button
                       type="button"
                       className="btn btn-secondary"
+                      disabled={rowBusy}
                       onClick={() => void setStatus(b.id, "COMPLETED")}
                     >
-                      Marcar concluído
+                      {rowBusy ? "Atualizando…" : "Marcar concluído"}
                     </button>
                   )}
                 </div>

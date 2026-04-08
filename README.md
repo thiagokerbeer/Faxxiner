@@ -43,6 +43,22 @@ npm run dev
 
 API padrão: `http://localhost:4002`
 
+### Health (API)
+
+| Método / URL | Uso |
+|--------------|-----|
+| `GET /health` | **Liveness** — processo vivo; use no **health check** do Render (campo `healthCheckPath: /health`). |
+| `HEAD /health` | Mesmo propósito, sem corpo — alguns monitores externos preferem `HEAD`. |
+| `GET /health?deep=1` | **Readiness + DB** — executa `SELECT 1` no Postgres; falha se o banco estiver inacessível (útil para diagnóstico ou monitoramento externo, não obrigatório no Render free). |
+
+Exemplos:
+
+```bash
+curl -sS http://localhost:4002/health
+curl -sS "http://localhost:4002/health?deep=1"
+curl -sS -I -X HEAD http://localhost:4002/health
+```
+
 ### 3. Frontend
 
 ```bash
@@ -56,12 +72,15 @@ App: `http://localhost:5173`
 
 ### Contas de demonstração (após seed)
 
-| Papel        | E-mail              | Senha      |
+O `prisma/seed.ts` cria **dezenas de usuários** (clientes e diaristas) com perfis em **várias capitais** — todos com a mesma senha abaixo. E-mails seguem o padrão `nome.cidade@demo.com` ou os fixos da tabela.
+
+| Papel        | E-mail (exemplos)   | Senha      |
 |--------------|---------------------|------------|
-| Cliente      | cliente@demo.com    | demo123456 |
-| Profissional | maria@demo.com      | demo123456 |
-| Profissional | ana@demo.com        | demo123456 |
-| Gestor site  | admin@demo.com      | demo123456 |
+| Cliente      | `cliente@demo.com`, `patricia.rj@demo.com`, `roberto.bsb@demo.com`, … | demo123456 |
+| Profissional | `maria@demo.com`, `carla.rio@demo.com`, `denise.bsb@demo.com`, … | demo123456 |
+| Gestor site  | `admin@demo.com`    | demo123456 |
+
+Lista completa de e-mails e cidades: veja os arrays `CLIENTS` e `DIARISTAS` em `backend/prisma/seed.ts`.
 
 ## Segurança e LGPD (backend)
 
@@ -72,7 +91,25 @@ App: `http://localhost:5173`
 - **Titulares** — `GET /api/legal/lgpd` (resumo para transparência); usuários autenticados: `GET /api/me/data-export` (portabilidade, JSON) e `DELETE /api/me/account` (anonimização com confirmação por senha). Contas encerradas ficam com `deletedAt` e não autenticam.
 - **Deploy** — use **HTTPS**; defina `TRUST_PROXY=1` atrás de reverse proxy; preencha `LGPD_CONTROLLER_EMAIL` e, se houver, `LGPD_DPO_EMAIL`. Ajuste textos legais com seu advogado.
 
+#### Variáveis de ambiente (checklist produção)
+
+| Onde | Variável | Obrigatório | Notas |
+|------|-----------|-------------|--------|
+| **Render** | `NODE_ENV` | sim | `production` |
+| **Render** | `DATABASE_URL` | sim | Connection string PostgreSQL (ex.: Neon) |
+| **Render** | `JWT_SECRET` | sim | ≥ 32 caracteres aleatórios |
+| **Render** | `FRONTEND_ORIGIN` | sim | URL(s) do site com `https://`, separadas por vírgula se várias (ex.: `https://faxxiner.vercel.app`). Barras finais são normalizadas pela API. |
+| **Render** | `TRUST_PROXY` | recomendado | `1` atrás do proxy do Render |
+| **Render** | `LGPD_CONTROLLER_EMAIL` | recomendado | E-mail do controlador (transparência / contato titular) |
+| **Render** | `LGPD_DPO_EMAIL` | opcional | Encarregado de dados, se houver |
+| **Render** | `SKIP_DB_SEED` | opcional | `true` para **não** rodar `npm run db:seed` em todo deploy |
+| **Vercel** | `VITE_API_URL` | sim | URL pública da API (ex.: `https://faxxiner-api.onrender.com`), **sem** `/api` no final |
+
 Após puxar estas alterações, rode no backend: `npx prisma migrate dev` (ou `migrate deploy` em produção).
+
+#### Monitoramento de uptime (opcional)
+
+Serviços como [UptimeRobot](https://uptimerobot.com), [Better Stack](https://betterstack.com) (ex-Better Uptime) ou checks periódicos com `curl` podem apontar para `GET https://<sua-api>/health` a cada 5–15 minutos. Isso reduz hibernação em planos gratuitos do Render e avisa se a API caiu. Para validar **só o banco**, use `GET .../health?deep=1` (pode falhar por credenciais/rede mesmo com a API no ar).
 
 ## Deploy
 
@@ -92,10 +129,10 @@ Tudo com camadas **hobby / free** típicas (sujeitas a mudança pelos provedores
 2. **Neon** — crie um projeto → copie a **connection string** PostgreSQL (costuma incluir `sslmode=require`; mantenha como veio).
 3. **Render** → **New** → **Blueprint** → escolha o repo e o arquivo **`render.free.yaml`** (só a API, sem banco no Render).
    - Quando o painel pedir **`DATABASE_URL`**, cole a URL do Neon.
-   - Preencha **`FRONTEND_ORIGIN`** depois que a Vercel existir (ex.: `https://xxx.vercel.app`), ou atualize no segundo deploy.
+   - **`FRONTEND_ORIGIN`** — nos blueprints do repo já vem `https://faxxiner.vercel.app`; altere no painel se usar outro domínio ou várias origens (separadas por vírgula).
    - **`JWT_SECRET`**: o Blueprint pode gerar; se a API não subir por validação (mín. 32 caracteres), defina um segredo longo manualmente no painel.
 4. **Vercel** → novo projeto → **Root Directory:** `frontend` → variável **`VITE_API_URL`** = URL da API Render (ex.: `https://faxxiner-api.onrender.com`, **sem** `/api` no final).
-5. Volte ao Render e confirme **`FRONTEND_ORIGIN`** = URL exata do site na Vercel (com `https://`), senão o navegador bloqueia por CORS.
+5. Confirme **`FRONTEND_ORIGIN`** no Render = URL do frontend (ex.: `https://faxxiner.vercel.app`), senão o navegador bloqueia por CORS.
 
 **Contas demo em produção** — e-mail `cliente@demo.com` ou `admin@demo.com`, senha **`demo123456`**. O Blueprint (`render.free.yaml` / `render.yaml`) roda **`npm run db:seed` no final do build**, para criar/atualizar esses usuários no Neon.
 
@@ -137,6 +174,22 @@ git push
 | **`render.free.yaml`** | Deploy **grátis**: só API no Render; Postgres no **Neon** |
 | `render.yaml` | API + Postgres no Render (banco pode ser pago) |
 | `frontend/vercel.json` | SPA Vite + rewrites para `react-router` |
+
+## Troubleshooting
+
+### Prisma: `EPERM` / rename do engine (Windows, OneDrive, antivírus)
+
+Se `npx prisma generate` ou `npm run build` falharem ao renomear `query_engine-*.dll.node`, o cliente em `node_modules/.prisma` pode estar bloqueado por sincronização de pasta ou antivírus.
+
+1. No `backend`, apague a pasta gerada e regenere:
+
+   ```bash
+   npm run db:generate:fresh
+   ```
+
+   (remove `node_modules/.prisma` e roda `prisma generate`.)
+
+2. Se persistir: clone ou mova o projeto para fora do **OneDrive** / pasta sincronizada, ou adicione exclusão para `node_modules` no antivírus.
 
 ## Estrutura
 

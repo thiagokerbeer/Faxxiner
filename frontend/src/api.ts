@@ -35,7 +35,14 @@ export async function api<T>(
     return undefined as T;
   }
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch {
+      throw new Error(res.ok ? "Resposta inválida do servidor (não é JSON)" : `Erro ${res.status}`);
+    }
+  }
 
   if (!res.ok) {
     const msg =

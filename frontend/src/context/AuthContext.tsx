@@ -15,6 +15,8 @@ type AuthState = {
   user: UserPublic | null;
   me: MeUser | null;
   loading: boolean;
+  authNotice: string | null;
+  clearAuthNotice: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (p: {
     email: string;
@@ -37,6 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null);
   const [me, setMe] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authNotice) return;
+    const t = window.setTimeout(() => setAuthNotice(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [authNotice]);
+
+  const clearAuthNotice = useCallback(() => setAuthNotice(null), []);
 
   const refreshMe = useCallback(async () => {
     const t = localStorage.getItem(TOKEN_KEY);
@@ -79,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(r.token);
     setUser(r.user);
     await refreshMe();
+    setAuthNotice("Você logou na sua conta");
   }, [refreshMe]);
 
   const register = useCallback(
@@ -103,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    setAuthNotice("Você saiu da sua conta");
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
@@ -115,12 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       me,
       loading,
+      authNotice,
+      clearAuthNotice,
       login,
       register,
       logout,
       refreshMe,
     }),
-    [token, user, me, loading, login, register, logout, refreshMe]
+    [token, user, me, loading, authNotice, clearAuthNotice, login, register, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

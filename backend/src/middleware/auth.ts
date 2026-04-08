@@ -3,8 +3,16 @@ import jwt, { type Secret, type SignOptions } from "jsonwebtoken";
 import type { Role } from "@prisma/client";
 import { getJwtExpiresIn, getJwtSecret } from "../lib/env.js";
 import { prisma } from "../lib/prisma.js";
+import {
+  DB_AUTH_FAILED_MESSAGE,
+  DB_UNAVAILABLE_MESSAGE,
+  isDatabaseAuthFailed,
+  isDatabaseUnreachable,
+} from "../lib/dbError.js";
 
 export type JwtPayload = { userId: string; role: Role };
+
+const MAX_BEARER_TOKEN_CHARS = 4096;
 
 declare global {
   namespace Express {
@@ -27,22 +35,38 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     res.status(401).json({ error: "Token ausente" });
     return;
   }
+  if (token.length > MAX_BEARER_TOKEN_CHARS) {
+    res.status(401).json({ error: "Token inválido" });
+    return;
+  }
 
   void (async () => {
     try {
       const decoded = jwt.verify(token, getJwtSecret()) as JwtPayload;
       const u = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { deletedAt: true },
+        select: { id: true, deletedAt: true, role: true },
       });
       if (!u || u.deletedAt) {
         res.status(401).json({ error: "Sessão inválida ou conta encerrada" });
         return;
       }
-      req.user = decoded;
+      if (u.role !== decoded.role) {
+        res.status(401).json({ error: "Sessão desatualizada — entre novamente" });
+        return;
+      }
+      req.user = { userId: u.id, role: u.role };
       next();
-    } catch {
-      res.status(401).json({ error: "Token inválido" });
+    } catch (e) {
+      if (isDatabaseUnreachable(e)) {
+        if (!res.headersSent) res.status(503).json({ error: DB_UNAVAILABLE_MESSAGE });
+        return;
+      }
+      if (isDatabaseAuthFailed(e)) {
+        if (!res.headersSent) res.status(503).json({ error: DB_AUTH_FAILED_MESSAGE });
+        return;
+      }
+      if (!res.headersSent) res.status(401).json({ error: "Token inválido" });
     }
   })();
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 function HeroIllustration() {
@@ -31,6 +32,8 @@ function HeroIllustration() {
 }
 
 export function Home() {
+  const [diaristaActionsOpen, setDiaristaActionsOpen] = useState(false);
+
   return (
     <div className="land-home">
       <section className="land-hero">
@@ -71,9 +74,41 @@ export function Home() {
                 Cadastre seu perfil, informe bairros e valor por hora, e receba solicitações de famílias da sua
                 região.
               </p>
-              <Link to="/cadastro?role=DIARISTA" className="btn btn-cta-pro btn-lg btn-block">
-                Sou diarista
-              </Link>
+              <div
+                className="land-path-disclosure"
+                onBlurCapture={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDiaristaActionsOpen(false);
+                }}
+              >
+                <button
+                  type="button"
+                  id="land-diarista-trigger"
+                  className="btn btn-cta-pro btn-lg btn-block"
+                  aria-expanded={diaristaActionsOpen}
+                  aria-controls="land-diarista-actions"
+                  onClick={() => setDiaristaActionsOpen((o) => !o)}
+                >
+                  Sou diarista
+                </button>
+                <div
+                  id="land-diarista-actions"
+                  className="land-path-disclosure-panel"
+                  role="region"
+                  aria-labelledby="land-diarista-trigger"
+                  hidden={!diaristaActionsOpen}
+                >
+                  <Link
+                    to="/cadastro?role=DIARISTA"
+                    className="btn btn-outline-brand btn-lg btn-block"
+                    onClick={() => setDiaristaActionsOpen(false)}
+                  >
+                    Cadastrar
+                  </Link>
+                  <Link to="/entrar" className="btn btn-ghost btn-lg btn-block" onClick={() => setDiaristaActionsOpen(false)}>
+                    Entrar
+                  </Link>
+                </div>
+              </div>
             </article>
           </div>
         </div>
