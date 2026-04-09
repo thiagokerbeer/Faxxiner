@@ -64,13 +64,23 @@ export function createApp() {
     })
   );
 
-  /** Raiz — só para quem abre a URL da API no navegador (não é o site; o front fica na Vercel). */
+  /** Raiz — descritivo para quem inspeciona a URL da API diretamente. */
   app.get("/", (_req, res) => {
     res.json({
       service: "Faxxiner API",
+      description: "REST API de marketplace de diaristas — projeto de portfólio full stack.",
       ok: true,
       health: "/health",
-      hint: "O app web usa rotas em /api/*; a interface fica no domínio do frontend (ex. Vercel).",
+      endpoints: {
+        auth: "/api/auth (register, login, refresh, logout, me)",
+        diaristas: "/api/diaristas (listagem pública + perfil autenticado)",
+        bookings: "/api/bookings (agendamentos autenticados)",
+        admin: "/api/admin (visão geral — papel ADMIN)",
+        legal: "/api/legal/lgpd (transparência LGPD)",
+        me: "/api/me (portabilidade e exclusão de conta)",
+      },
+      stack: ["Node.js", "Express", "TypeScript", "Prisma", "PostgreSQL", "Zod", "JWT"],
+      hint: "A interface web fica no domínio do frontend (ex.: Vercel). Rotas de negócio em /api/*.",
     });
   });
 
